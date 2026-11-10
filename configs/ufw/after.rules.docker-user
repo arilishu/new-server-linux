@@ -1,0 +1,16 @@
+# Agregar AL FINAL de /etc/ufw/after.rules (backup antes) y `sudo ufw reload`:
+#   envsubst '${PUBLIC_IFACE}' < after.rules.docker-user | sudo tee -a /etc/ufw/after.rules
+#
+# Docker publica los puertos de los contenedores con sus propias reglas de
+# iptables y el tráfico NUNCA pasa por ufw: un `ports: "5432:5432"` queda abierto a
+# internet aunque `ufw status` no lo muestre. Docker siempre revisa DOCKER-USER
+# antes que sus reglas y no la pisa. Esto descarta toda conexión NUEVA que entra
+# por la interfaz pública hacia cualquier contenedor; localhost y tailscale0 siguen
+# entrando, y la salida de los contenedores no se toca (las respuestas son
+# ESTABLISHED). Un servicio Docker que tenga que ser público va detrás de nginx.
+*filter
+:DOCKER-USER - [0:0]
+-A DOCKER-USER -i ${PUBLIC_IFACE} -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+-A DOCKER-USER -i ${PUBLIC_IFACE} -m conntrack --ctstate NEW -j DROP
+-A DOCKER-USER -j RETURN
+COMMIT

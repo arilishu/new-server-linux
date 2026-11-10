@@ -1,0 +1,5 @@
+// /etc/apt/apt.conf.d/20auto-upgrades — parches de seguridad diarios (unattended-upgrades
+// con los orígenes por defecto de Ubuntu: -security y ESM). El dist-upgrade completo
+// y el reinicio los maneja scripts/system-update.sh.
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";

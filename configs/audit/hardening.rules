@@ -1,0 +1,40 @@
+# /etc/audit/rules.d/hardening.rules — cargar con `sudo augenrules --load` (20 reglas).
+# NO se audita execve global: con Docker genera un volumen inmanejable.
+
+## Identity / auth files
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/sudoers -p wa -k identity
+-w /etc/sudoers.d/ -p wa -k identity
+
+## SSH
+-w /etc/ssh/sshd_config -p wa -k sshd
+
+## Cron
+-w /etc/crontab -p wa -k cron
+-w /etc/cron.d/ -p wa -k cron
+-w /etc/cron.daily/ -p wa -k cron
+-w /var/spool/cron/ -p wa -k cron
+
+## Firewall
+-w /etc/ufw/ -p wa -k firewall
+
+## Auditd self-tamper
+-w /etc/audit/ -p wa -k auditconfig
+-w /sbin/auditctl -p x -k auditconfig
+-w /sbin/auditd -p x -k auditconfig
+
+## Kernel module loading
+-w /sbin/insmod -p x -k modules
+-w /sbin/rmmod -p x -k modules
+-w /sbin/modprobe -p x -k modules
+-a always,exit -F arch=b64 -S init_module -S delete_module -k modules
+
+## Privilege escalation via setuid binaries
+-a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -k privesc
+
+## Make the configuration immutable (requires reboot to change further)
+## (left commented out; enable if you want tamper-evidence at the cost of needing a reboot to edit rules)
+#-e 2

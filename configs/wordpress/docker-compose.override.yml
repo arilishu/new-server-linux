@@ -1,0 +1,12 @@
+# Endurecimiento y performance de PHP, y tope de memoria del contenedor.
+# Compose lo combina solo con docker-compose.yml. Recrear: docker compose up -d --no-deps wordpress
+#
+# mem_limit: según el sitio. Referencia del server original: 1536m una tienda
+# WooCommerce + Elementor, 768m un sitio de contenido grande, 512m un landing.
+services:
+  wordpress:
+    mem_limit: 768m
+    volumes:
+      - ./php-security.ini:/usr/local/etc/php/conf.d/zzz-security.ini:ro
+      # Solo si el opcache se llena (ver PLAYBOOK.md, Performance):
+      # - ./php-performance.ini:/usr/local/etc/php/conf.d/zzz-performance.ini:ro

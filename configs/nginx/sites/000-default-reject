@@ -1,0 +1,29 @@
+# /etc/nginx/sites-available/000-default-reject (+ symlink en sites-enabled).
+#
+# Server por defecto: todo Host/SNI que no matchee un server_name real muere acá.
+# Sin esto nginx usa como default el PRIMER server block que carga (orden
+# alfabético), y pasa esto (visto en el server original):
+#   - HTTP con cualquier Host → 301 a https://<ese Host>/ (redirector abierto si
+#     el bloque usa $host).
+#   - HTTPS por IP cruda → sirve un sitio cualquiera con un certificado que no
+#     corresponde, y los scanners encuentran su login.
+# Los vhosts reales no se ven afectados: nginx matchea por server_name primero.
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    # 444 cierra la conexión sin responder: no confirma que haya algo acá.
+    return 444;
+}
+
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name _;
+
+    # Rechaza el handshake TLS en vez de presentar el cert de otro host.
+    # Requiere nginx >= 1.19.4 (Ubuntu 24.04 trae 1.24).
+    ssl_reject_handshake on;
+}

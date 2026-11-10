@@ -1,0 +1,14 @@
+# /etc/logrotate.d/<app> — logs de una app de pm2 fuera de ~/.pm2/logs.
+# copytruncate porque pm2 mantiene el archivo abierto. Cambiar out_file/error_file
+# en el ecosystem no toma efecto con `pm2 restart`: hace falta delete + start + save.
+/home/USUARIO/APP/logs/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su USUARIO USUARIO
+    create 0644 USUARIO USUARIO
+}

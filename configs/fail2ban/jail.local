@@ -1,0 +1,22 @@
+# /etc/fail2ban/jail.local — ban de 24 h al 5.º intento en 10 min; recidive banea 7 días
+# en todos los puertos a quien reincide 3 veces en un día. backend=systemd porque
+# Ubuntu 24.04 no escribe /var/log/auth.log por defecto.
+
+[DEFAULT]
+bantime  = 86400
+findtime = 600
+maxretry = 5
+banaction = nftables
+banaction_allports = nftables[type=allports]
+backend = systemd
+
+[sshd]
+enabled = true
+
+[recidive]
+enabled  = true
+logpath  = /var/log/fail2ban.log
+banaction = nftables[type=allports]
+bantime  = 604800
+findtime = 86400
+maxretry = 3

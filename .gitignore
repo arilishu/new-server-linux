@@ -1,0 +1,7 @@
+# Nunca: datos y secretos de un server concreto
+baseline.env
+backup-targets.sh
+*.env
+!configs/wordpress/wp-update.env.example
+__pycache__/
+node_modules/

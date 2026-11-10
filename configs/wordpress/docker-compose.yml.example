@@ -1,0 +1,76 @@
+# Plantilla: un WordPress por carpeta (~/SITIO/), con su propia MariaDB.
+# Copiar como docker-compose.yml, poner SITIO y PUERTO, y crear .env (chmod 600) con
+#   DB_PASSWORD=...  DB_ROOT_PASSWORD=...  TABLE_PREFIX=wp_
+# Va junto con docker-compose.override.yml (Compose lo combina solo).
+#
+# - Tags fijados a la versión MAYOR (php8.3, mariadb:11): los parches entran con el
+#   update diario (scripts/wp-update.sh); el salto de versión mayor es un cambio
+#   deliberado acá, probado antes.
+# - El puerto se publica solo en 127.0.0.1: lo publica nginx.
+# - WP-CLI: docker compose run --rm --no-deps wpcli wp ...  (el --no-deps importa,
+#   ver wp-update.sh).
+services:
+  db:
+    image: mariadb:11
+    container_name: SITIO-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: SITIO
+      MARIADB_USER: SITIO
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - ./db-data:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    container_name: SITIO-wp
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: SITIO
+      WORDPRESS_DB_USER: SITIO
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_TABLE_PREFIX: ${TABLE_PREFIX}
+      WORDPRESS_CONFIG_EXTRA: |
+        if (isset($$_SERVER['HTTP_X_FORWARDED_PROTO']) && $$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+          $$_SERVER['HTTPS'] = 'on';
+        }
+        // IP real del visitante: nginx la pone en X-Real-IP ($remote_addr, que ya
+        // resolvió real_ip desde los rangos de Cloudflare). Rate-limits, Wordfence y
+        // los comentarios ven al visitante y no a Cloudflare.
+        if (!empty($$_SERVER['HTTP_X_REAL_IP']) && filter_var($$_SERVER['HTTP_X_REAL_IP'], FILTER_VALIDATE_IP)) {
+          $$_SERVER['REMOTE_ADDR'] = $$_SERVER['HTTP_X_REAL_IP'];
+        }
+        // Sin editor de código en el panel: una cuenta admin robada no puede editar el tema.
+        if (!defined('DISALLOW_FILE_EDIT')) define('DISALLOW_FILE_EDIT', true);
+    volumes:
+      - wp-core:/var/www/html
+      - ./wp-content:/var/www/html/wp-content
+      - ./apache-override.conf:/etc/apache2/conf-enabled/zz-allowoverride.conf:ro
+      - ./apache-security.conf:/etc/apache2/conf-enabled/zz-security.conf:ro
+    ports:
+      - "127.0.0.1:PUERTO:80"
+
+  wpcli:
+    image: wordpress:cli-php8.3
+    container_name: SITIO-wpcli
+    profiles: ["cli"]
+    user: "33:33"
+    depends_on:
+      - db
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: SITIO
+      WORDPRESS_DB_USER: SITIO
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_TABLE_PREFIX: ${TABLE_PREFIX}
+      WP_CLI_CACHE_DIR: /tmp/wp-cli-cache
+    volumes:
+      - wp-core:/var/www/html
+      - ./wp-content:/var/www/html/wp-content
+
+volumes:
+  wp-core:

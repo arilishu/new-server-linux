@@ -1,0 +1,30 @@
+# Crontab del usuario administrador (crontab -e). Horarios en UTC (Argentina = UTC-3).
+# Criterio de todo: cada tarea deja log y manda mail SOLO si falla o si hay que
+# enterarse ya; lo que salió bien lo resume el reporte semanal.
+# R = carpeta del repo (p. ej. /home/USUARIO/server-baseline)
+
+# Backup diario (bases + carpetas) → local + S3.
+30 3 * * *  R/scripts/backup.sh > /dev/null 2>&1
+
+# WordPress: update diario de cada sitio, escalonados (comparten la imagen de MariaDB).
+15 4 * * *  R/scripts/wp-update.sh /home/USUARIO/sitio1 > /dev/null 2>&1
+45 4 * * *  R/scripts/wp-update.sh /home/USUARIO/sitio2 > /dev/null 2>&1
+
+# rkhunter (mail solo con advertencias).
+0 4 * * *   R/scripts/rkhunter-report.sh > /dev/null 2>&1
+
+# Sistema operativo + reinicio si hay kernel nuevo. Después de los backups y updates.
+0 7 * * *   R/scripts/system-update.sh > /dev/null 2>&1
+
+# Docker Compose (no WordPress): domingos.
+0 3 * * 0   R/scripts/docker-update.sh > /dev/null 2>&1
+
+# Rangos de Cloudflare → nginx real_ip + ufw: lunes.
+20 4 * * 1  R/scripts/cloudflare-ips-update.sh >> /home/USUARIO/backups/cloudflare-ips-update.log 2>&1
+
+# Chequeo después de un reinicio planificado (solo si se armó con pre-reboot-snapshot.sh).
+@reboot     R/scripts/post-reboot-check.sh > /dev/null 2>&1
+
+# Reporte semanal: armarlo por server (ver examples/weekly-report.py), domingo
+# después de todo lo demás.
+# 30 7 * * 0  /home/USUARIO/bin/weekly-report.py >> /home/USUARIO/backups/weekly-report.log 2>&1
